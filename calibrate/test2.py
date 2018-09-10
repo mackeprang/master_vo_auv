@@ -14,6 +14,8 @@ def image_broken(img_path):
 
 im_filename = '*.png'
 imdir = '/Users/Mackeprang/Dropbox (Personlig)/Master Thesis/Pictures/20181005_084733.9640_Mission_1'
+#imdir = '/Users/Mackeprang/Dropbox (Personlig)/Master Thesis/Pictures/20181005_084733.9640_Mission_1'
+imdir = 'C:/Users/Rasmus/Dropbox/Master Thesis/Pictures/20181005_084733.9640_Mission_1'
 filenames = []
 images = []
 timestamp = []
