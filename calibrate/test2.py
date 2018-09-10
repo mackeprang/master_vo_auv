@@ -87,6 +87,8 @@ def preprocess_image(im,size=(640,480),method=0):
 
 im_filename = '*.png'
 imdir = '/Users/Mackeprang/Dropbox (Personlig)/Master Thesis/Pictures/20181005_084733.9640_Mission_1'
+#imdir = '/Users/Mackeprang/Dropbox (Personlig)/Master Thesis/Pictures/20181005_084733.9640_Mission_1'
+imdir = 'C:/Users/Rasmus/Dropbox/Master Thesis/Pictures/20181005_084733.9640_Mission_1'
 filenames = []
 images = []
 timestamp = []

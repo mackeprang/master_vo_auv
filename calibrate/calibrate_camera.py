@@ -1,17 +1,28 @@
-#####################
-### Project in VO ###
-## Mads Mackeprang ##
-##  Copyright 2018 ##
-##   DTU Denmark   ##
-##-----------------##
-## To calibrate    ##
-## pi camera       ##
-#####################
 
-#  Part of this code is copied from https://docs.opencv.org/3.1.0/dc/dbb/tutorial_py_calibration.html #
 
-import cv2
 import numpy as np
+<<<<<<< HEAD
+import cv2
+from matplotlib import pyplot as plt
+img1 = cv2.imread('C:/Users/Rasmus/Documents/MATLAB/uw0.png',0)          # queryImage
+img2 = cv2.imread('C:/Users/Rasmus/Documents/MATLAB/uw1.png',0) # trainImage
+# Initiate SIFT detector
+sift = cv2.SIFT()
+# find the keypoints and descriptors with SIFT
+kp1, des1 = sift.detectAndCompute(img1,None)
+kp2, des2 = sift.detectAndCompute(img2,None)
+# BFMatcher with default params
+bf = cv2.BFMatcher()
+matches = bf.knnMatch(des1,des2, k=2)
+# Apply ratio test
+good = []
+for m,n in matches:
+    if m.distance < 0.75*n.distance:
+        good.append([m])
+# cv2.drawMatchesKnn expects list of lists as matches.
+img3 = cv2.drawMatchesKnn(img1,kp1,img2,kp2,good,flags=2)
+plt.imshow(img3),plt.show()
+=======
 import glob
 from sys import argv
 import os
@@ -117,3 +128,4 @@ if images_path is not None:
     np.savetxt("dist_coeff.csv", distcoeff, delimiter=',')
     print(cam_mat)
 ##    print(distcoeff)
+>>>>>>> e8a5d701b4412c74da9b8517a6a1a2fe857d3f8e
