@@ -12,13 +12,91 @@ def image_broken(img_path):
     except:
         return 1
 
+def draw_flow(img,p1,p2,mask=None):
+    if mask is None:
+        p1 = np.reshape(p1,(-1 , 2))
+        p2 = np.reshape(p2,(-1 , 2))
+        if len(p1) > 0:
+            for i, (new,old) in enumerate(zip(p1,p2)):
+                a,b = new.ravel()
+                c,d = old.ravel()
+                img = cv2.line(img,(a,b),(c,d),(0,255,0),1)
+    else:
+        p1_inliers = p1[mask==1]
+        p2_inliers = p2[mask == 1]
+        p1_outliers = p1[mask == 0]
+        p2_outliers = p2[mask == 0]
+        if len(p1_inliers) > 0:
+            p1_inliers = np.reshape(p1_inliers,(-1,2))
+            p2_inliers = np.reshape(p2_inliers, (-1, 2))
+            for i, (new, old) in enumerate(zip(p1_inliers, p2_inliers)):
+                a, b = new.ravel()
+                c, d = old.ravel()
+                img = cv2.line(img, (a, b), (c, d), (0, 255, 0), 1)
+        if len(p1_outliers) > 0:
+            p1_outliers = np.reshape(p1_outliers, (-1, 2))
+            p2_outliers = np.reshape(p2_outliers, (-1, 2))
+            for i, (new, old) in enumerate(zip(p1_outliers, p2_outliers)):
+                a, b = new.ravel()
+                c, d = old.ravel()
+                img = cv2.line(img, (a, b), (c, d), (0, 0, 255), 1)
+    return img
+
+def sparse_optical_flow(img1,img2,points,fb_threshold,optical_flow_params):
+    #old_points = points.copy()
+    new_points, status , err = cv2.calcOpticalFlowPyrLK(img1,img2,points,None,**optical_flow_params)
+    if fb_threshold>0:
+        new_points_r, status_r, err = cv2.calcOpticalFlowPyrLK(img2,img1,new_points,None,**optical_flow_params)
+        new_points_r[status_r==0] = False#np.nan
+        fb_good = (np.fabs(new_points_r-points) < fb_threshold).all(axis=2)
+        new_points[~fb_good] = np.nan
+        old_points = np.reshape(points[~np.isnan(new_points)],(-1,1,2))
+        new_points = np.reshape(new_points[~np.isnan(new_points)],(-1,1,2))
+    return new_points,old_points
+
+def update_motion(points1,points2,Rpos,tpos,cam_mat=None,scale = 1.0):
+    E, mask = cv2.findEssentialMat(points1,points2,cameraMatrix=cam_mat,method=outlier_alg,prob=0.999, mask=None)
+    newmask = np.copy(mask)
+    _,R,t,newmask = cv2.recoverPose(E,points1,points2,cameraMatrix=cam_mat,mask=newmask)
+    tp = tpos+np.dot(Rpos,t)*scale
+    Rp = np.dot(R,Rpos)
+    return Rp,tp,mask
+
+def find_features(im,method=0):
+    points = []
+    if method == 0:
+        keypoints = blob.detect(im)
+    elif method == 1:
+        keypoints = fast.detect(im)
+
+    for point in keypoints:
+        points.append(point.pt)
+    points = np.array(points, dtype=np.float32)
+
+    return np.reshape(points, (-1, 1, 2))
+
+def preprocess_image(im,size=(640,480),method=0):
+    im = cv2.resize(im, size)
+    gray = cv2.cvtColor(im, cv2.COLOR_BGR2GRAY)
+    if method==0:
+        res = cv2.equalizeHist(gray)
+    elif method == 1:
+        clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+        res = clahe.apply(gray)
+    return res
+
 im_filename = '*.png'
 imdir = '/Users/Mackeprang/Dropbox (Personlig)/Master Thesis/Pictures/20181005_084733.9640_Mission_1'
 filenames = []
 images = []
 timestamp = []
+backward_flow_threshold = 1
+prev_frame = None
 select = 2
 filepath = ''.join((imdir,'/',im_filename))
+optical_flow_params = dict(winSize = (30,30),
+                           maxLevel = 3,
+                           criteria = (cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 10, 0.01))
 blob_params = dict(minThreshold = 10,
                    maxThreshold = 200,
                    filterByArea=True,
@@ -60,49 +138,40 @@ params.minConvexity = 0.87
 # Filter by Inertia
 params.filterByInertia = True
 params.minInertiaRatio = 0.1
-detector = cv2.SimpleBlobDetector_create(params)
-
-for i,filename in enumerate(filenames):
-    if image_broken(filename):
+prev_points = []
+feat_method = 0
+blob = cv2.SimpleBlobDetector_create(params)
+fast = cv2.FastFeatureDetector_create()
+for i,frame in enumerate(filenames):
+    if image_broken(frame):
         continue
 
-    print i
+    gray = preprocess_image(cv2.imread(frame),(640,480),1)
+    im = cv2.resize(cv2.imread(frame),(640,480))
+    if prev_frame is None:
+        prev_points = find_features(gray,0)
+        prev_frame = gray.copy()
+        continue
 
-    im = cv2.imread(filename)
-    im = cv2.resize(im,(640,480))
-    im_gray = cv2.cvtColor(im,cv2.COLOR_BGR2GRAY)
-    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
-    if select == 1:
-        res_name = "Clahe"
-        res = clahe.apply(im_gray) # https://docs.opencv.org/3.1.0/d5/daf/tutorial_py_histogram_equalization.html
-    elif select == 2:
-        res_name = "Histogram Equalization"
-        res = cv2.equalizeHist(im_gray)
-    #im_combined = np.hstack((im,cv2.cvtColor(res,cv2.COLOR_GRAY2BGR)))
+    if len(prev_points) < 100:
+        prev_points = find_features(gray, feat_method)
 
-    # Detect blobs.
-    keypoints = detector.detect(im_gray)
+    new_points, prev_points = sparse_optical_flow(prev_frame, gray, prev_points, backward_flow_threshold,
+                                                  optical_flow_params)
 
-    # Draw detected blobs as red circles.
-    # cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS ensures the size of the circle corresponds to the size of blob
-    im_gray_with_keypoints = cv2.drawKeypoints(im_gray, keypoints, np.array([]), (0, 0, 255),
-                                          cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
-    im_gray_with_keypoints = cv2.putText(im_gray_with_keypoints,"Keypoints: " + str(np.size(keypoints)),(50,50),cv2.FONT_HERSHEY_SIMPLEX,1,(0,255,0),2)
-    keypoints = detector.detect(res)
-    res_with_keypoints = cv2.drawKeypoints(res, keypoints, np.array([]), (0, 0, 255),
-                                               cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
-    res_with_keypoints = cv2.putText(res_with_keypoints, "Keypoints: " + str(np.size(keypoints)), (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0),
-                2)
-    im_combined = np.hstack((im_gray_with_keypoints, res_with_keypoints))
-    cv2.imshow('Recordings: Mission 1',im_combined)
+    flow_im = draw_flow(im,prev_points,new_points)
+    #im_combined = np.hstack((im, gray))
+    cv2.imshow('Recordings: Mission 1',flow_im)
+    prev_frame = gray.copy()
+    prev_points = new_points.copy()
     if cv2.waitKey(100) & 0xFF  == ord('q'): #Pause
         key = cv2.waitKey()
         if cv2.waitKey() & 0xFF  == ord('q'): #Exiting
             break
         elif cv2.waitKey() & 0xFF  == ord('1'): #Exiting
-            select = 1
+            feat_method = 1
         elif cv2.waitKey() & 0xFF  == ord('2'): #Using
-            select = 2
+            feat_method = 0
 
 print('Ending program')
 cv2.destroyAllWindows()
