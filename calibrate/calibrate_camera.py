@@ -16,8 +16,8 @@ import glob
 from sys import argv
 import os
 import shutil
-from picamera import PiCamera
-from picamera.array import PiRGBArray
+#from picamera import PiCamera
+#from picamera.array import PiRGBArray
 import time
 
 images_path = "calib_data/"
