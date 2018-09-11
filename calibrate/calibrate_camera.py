@@ -1,43 +1,32 @@
+#####################
+### Project in VO ###
+## Mads Mackeprang ##
+##  Copyright 2018 ##
+##   DTU Denmark   ##
+##-----------------##
+## To calibrate    ##
+## pi camera       ##
+#####################
 
+#  Part of this code is copied from https://docs.opencv.org/3.1.0/dc/dbb/tutorial_py_calibration.html #
 
-import numpy as np
-<<<<<<< HEAD
 import cv2
-from matplotlib import pyplot as plt
-img1 = cv2.imread('C:/Users/Rasmus/Documents/MATLAB/uw0.png',0)          # queryImage
-img2 = cv2.imread('C:/Users/Rasmus/Documents/MATLAB/uw1.png',0) # trainImage
-# Initiate SIFT detector
-sift = cv2.SIFT()
-# find the keypoints and descriptors with SIFT
-kp1, des1 = sift.detectAndCompute(img1,None)
-kp2, des2 = sift.detectAndCompute(img2,None)
-# BFMatcher with default params
-bf = cv2.BFMatcher()
-matches = bf.knnMatch(des1,des2, k=2)
-# Apply ratio test
-good = []
-for m,n in matches:
-    if m.distance < 0.75*n.distance:
-        good.append([m])
-# cv2.drawMatchesKnn expects list of lists as matches.
-img3 = cv2.drawMatchesKnn(img1,kp1,img2,kp2,good,flags=2)
-plt.imshow(img3),plt.show()
-=======
+import numpy as np
 import glob
 from sys import argv
 import os
 import shutil
-#from picamera import PiCamera
-#from picamera.array import PiRGBArray
+from picamera import PiCamera
+from picamera.array import PiRGBArray
 import time
 
 images_path = "calib_data/"
 create_images = False
-for i,argument in enumerate(argv):
+for i, argument in enumerate(argv):
     if argument in '--images_path':
-        images_path = str(argv[i+1])
+        images_path = str(argv[i + 1])
 
-    if argument in ('-ci','--create_images'):
+    if argument in ('-ci', '--create_images'):
         # Config parameters
         images_path = "calib_data/"
         create_images = True
@@ -51,29 +40,28 @@ for i,argument in enumerate(argv):
                 os.makedirs(images_path)
 
 if create_images:
-    camera_resolution=(640/2,480/2)
-    with PiCamera(resolution=camera_resolution,framerate = 24) as camera:
-        with PiRGBArray(camera,size=camera_resolution) as stream:
+    camera_resolution = (640 / 2, 480 / 2)
+    with PiCamera(resolution=camera_resolution, framerate=24) as camera:
+        with PiRGBArray(camera, size=camera_resolution) as stream:
             time.sleep(2)
-            for frame in camera.capture_continuous(stream,format='bgr',use_video_port=True):
+            for frame in camera.capture_continuous(stream, format='bgr', use_video_port=True):
                 stream.truncate()
                 stream.seek(0)
                 if img_count is -1:
                     img_count += 1
                     continue
                 img = frame.array
-                img = cv2.flip(img,-1)
-                cv2.imshow("Calibrate Image",img)
-                #if cv2.waitKey(20) == 32: # Space
+                img = cv2.flip(img, -1)
+                cv2.imshow("Calibrate Image", img)
+                # if cv2.waitKey(20) == 32: # Space
                 time.sleep(2)
                 img_count += 1
                 print("Image number: {}".format(img_count))
-                img_name = images_path+"img%.2d" % img_count + ".png"
+                img_name = images_path + "img%.2d" % img_count + ".png"
                 cv2.imwrite(img_name, img)
                 stream.truncate(0)
                 if img_count == 60 or cv2.waitKey(20) == ord('q'):
                     break
-
 
 cv2.destroyAllWindows()
 
@@ -88,16 +76,16 @@ if images_path is not None:
     ##############
 
     criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
-    objp = np.zeros((chessboard_w*chessboard_h, 3), np.float32)
+    objp = np.zeros((chessboard_w * chessboard_h, 3), np.float32)
     objp[:, :2] = np.mgrid[0:chessboard_h, 0:chessboard_w].T.reshape(-1, 2)
-    objp = objp*scale
+    objp = objp * scale
 
     objpoints = []  # 3d point in real world space
     imgpoints = []  # 2d points in image plane.
 
-    images = glob.glob(''.join((images_path,'*.png')))
+    images = glob.glob(''.join((images_path, '*.png')))
     imshape = None
-    for i,fname in enumerate(images):
+    for i, fname in enumerate(images):
         img = cv2.imread(fname)
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         imshape = gray.shape
@@ -109,23 +97,21 @@ if images_path is not None:
             cv2.cornerSubPix(gray, corners, (11, 11), (-1, -1), criteria)
             imgpoints.append(corners)
             print(i)
-            #cv2.drawChessboardCorners(img, (chessboard_h, chessboard_w), corners, ret)
-            #fname_new = fname[0:-4]
-            #cv2.imshow("img", img)
-            #cv2.imwrite(fname_new, img)
-            #print "Img number: %d" % i+1
-            #key = cv2.waitKey(100) & 0xFF
-             
+            # cv2.drawChessboardCorners(img, (chessboard_h, chessboard_w), corners, ret)
+            # fname_new = fname[0:-4]
+            # cv2.imshow("img", img)
+            # cv2.imwrite(fname_new, img)
+            # print "Img number: %d" % i+1
+            # key = cv2.waitKey(100) & 0xFF
 
     cv2.destroyAllWindows()
     ret, cam_mat, distcoeff, rvecs, tvecs = cv2.calibrateCamera(objpoints, imgpoints, imshape[::-1], None, None)
     save_mat = raw_input("Save camera matrix and distortions parameters: ")
     if save_mat is "y":
-        csv_cam_mat = open("cam_mat.csv",'w')
-        csv_dist_coeff = open("dist_coeff.csv",'w')
+        csv_cam_mat = open("cam_mat.csv", 'w')
+        csv_dist_coeff = open("dist_coeff.csv", 'w')
     print(ret)
-    np.savetxt("cam_mat.csv",cam_mat,delimiter=',')
+    np.savetxt("cam_mat.csv", cam_mat, delimiter=',')
     np.savetxt("dist_coeff.csv", distcoeff, delimiter=',')
     print(cam_mat)
 ##    print(distcoeff)
->>>>>>> e8a5d701b4412c74da9b8517a6a1a2fe857d3f8e
