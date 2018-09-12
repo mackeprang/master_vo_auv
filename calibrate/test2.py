@@ -64,11 +64,18 @@ def update_motion(points1,points2,Rpos,tpos,cam_mat=None,scale = 1.0):
 
 def find_features(im,method=0):
     points = []
+    keypoints = []
     if method == 0:
         keypoints = blob.detect(im)
     elif method == 1:
         keypoints = fast.detect(im)
+    elif method == 2:
+        points = cv2.goodFeaturesToTrack(im, mask=None, **good_feature_params)
+        for kp in points:
+            kp =  kp[0]
+            keypoints.append(cv2.KeyPoint(kp[0],kp[1],_size=2))
 
+        return points,keypoints
     for point in keypoints:
         points.append(point.pt)
     points = np.array(points, dtype=np.float32)
@@ -105,7 +112,8 @@ def draw_path(canvas,points,scale=0.1,clear=True,color=(0,255,0)):
         cv2.line(canvas,(x1,y1),(x2,y2),color,1)
     return canvas
 
-cam_mat = np.array([[1417.84363, 0.0, 353.360213], [0.0, 1469.27135, 270.122002],  [0.0, 0.0, 1.0]], dtype=np.float32)
+cam_mat = np.loadtxt("cam_mat.csv", dtype=np.float32, delimiter=',')
+dist_coeff = np.loadtxt("dist_coeff.csv", dtype=np.float32, delimiter=',')
 im_filename = '*.png'
 imdir = '/Users/Mackeprang/Dropbox (Personlig)/Master Thesis/Pictures/20181005_084733.9640_Mission_1'
 #imdir = '/Users/Mackeprang/Dropbox (Personlig)/Master Thesis/Pictures/20181005_084733.9640_Mission_1'
@@ -114,17 +122,17 @@ filenames = []
 images = []
 path = []
 timestamp = []
-backward_flow_threshold = 3
+backward_flow_threshold = 1
 prev_frame = None
-canvas = np.zeros((640, 480, 3), dtype=np.uint8)
+canvas = np.zeros((480,300,3), dtype=np.uint8)
 select = 2
 filepath = ''.join((imdir,'/',im_filename))
 fast_params = dict(threshold = 30,
                    nonmaxSuppression=True,
                    type=cv2.FAST_FEATURE_DETECTOR_TYPE_7_12)
 
-optical_flow_params = dict(winSize = (10,10),
-                           maxLevel = 4,
+optical_flow_params = dict(winSize = (15,15),
+                           maxLevel = 3,
                            criteria = (cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 10, 0.01))
 blob_params = dict(minThreshold = 10,
                    maxThreshold = 200,
@@ -136,6 +144,11 @@ blob_params = dict(minThreshold = 10,
                    minConvexity=0.87,
                    filterByInertia=True,
                    minInertiaRatio=0.01)
+good_feature_params = dict(maxCorners = 2000,
+                           qualityLevel = 0.01,
+                           minDistance = 5,
+                           blockSize = 5,
+                           useHarrisDetector = False)
 #im = cv2.imread('/Users/Mackeprang/Dropbox (Personlig)/Master Thesis/Pictures/20181005_084733.9640_Mission_1/20181005_084743_424.png',0)
 for imfile in glob.glob(filepath):
     filenames.append(imfile)
@@ -168,7 +181,7 @@ params.minConvexity = 0.87
 params.filterByInertia = True
 params.minInertiaRatio = 0.1
 prev_points = []
-feat_method = 0
+feat_method = 2
 Rpos = np.eye(3,3,dtype=np.float32)
 tpos = np.zeros((3,1),dtype=np.float32)
 blob = cv2.SimpleBlobDetector_create(params)
@@ -191,15 +204,18 @@ for i,frame in enumerate(filenames):
                                                   optical_flow_params)
     path.append(tpos)
     old_tpos = np.copy(tpos)
-    #Rpos, tpos, mask = update_motion(prev_points, new_points, Rpos, old_tpos, cam_mat)
-    flow_im = draw_flow(im,prev_points,new_points)
-    #canvas = draw_path(canvas,path)
-    gray_with_kp = cv2.drawKeypoints(gray,keypoints,np.array([]), (0,0,255), cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
-    im_combined = np.hstack((flow_im, gray_with_kp))
+    Rpos, tpos, mask = update_motion(prev_points, new_points, Rpos, old_tpos, cam_mat)
+    flow_im = draw_flow(im,prev_points,new_points,mask=None)
+    canvas = draw_path(canvas,path,scale=2)
+    gray_with_kp = cv2.drawKeypoints(gray,keypoints,np.array([]), (0, 0, 255),
+                                     cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
+    im_combined = np.hstack((flow_im, canvas))
+    im_combined = np.hstack((im_combined, gray_with_kp))
     cv2.imshow('Recordings: Mission 1',im_combined)
+    # cv2.imshow('Canvas', canvas)
     prev_frame = gray.copy()
     prev_points = new_points.copy()
-    if cv2.waitKey(100) & 0xFF  == ord('q'): #Pause
+    if cv2.waitKey(200) & 0xFF  == ord('q'): #Pause
         key = cv2.waitKey()
         if cv2.waitKey() & 0xFF  == ord('q'): #Exiting
             break
@@ -207,7 +223,8 @@ for i,frame in enumerate(filenames):
             feat_method = 1
         elif cv2.waitKey() & 0xFF  == ord('2'): #Using
             feat_method = 0
-
+        elif cv2.waitKey() & 0xFF  == ord('3'): #Using
+            feat_method = 2
 print('Ending program')
 cv2.destroyAllWindows()
 
