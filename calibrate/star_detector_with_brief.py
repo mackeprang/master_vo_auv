@@ -26,26 +26,53 @@ for imfile in glob.glob(filepath):
 filenames.sort()
 
 prev_frame = None
-orb = cv2.xfeatures2d.SIFT_create()
+params = cv2.SimpleBlobDetector_Params()
+
+# Change thresholds
+params.minThreshold = 100
+params.maxThreshold = 300
+
+# Filter by Area.
+params.filterByArea = True
+params.minArea = 10
+
+# Filter by Circularity
+params.filterByCircularity = True
+params.minCircularity = 0.1
+
+# Filter by Convexity
+params.filterByConvexity = True
+params.minConvexity = 0.87
+
+# Filter by Inertia
+params.filterByInertia = True
+params.minInertiaRatio = 0.1
+detector = cv2.SimpleBlobDetector_create(params)
+star = cv2.FeatureDetector_create("STAR")
+#brief = cv2.DescriptorExtractor_create("BRIEF")
+brief = cv2.ORB_create()
 bf = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
 for i,frame in enumerate(filenames):
     if image_broken(frame):
         continue
     img = cv2.imread(frame)
-    img = cv2.resize(img,(640,480))
-    gray = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
+    img = cv2.resize(img, (640, 480))
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     gaussian_im = cv2.GaussianBlur(gray, (9, 9), 10.0)
     gray = cv2.addWeighted(gray, 0.9, gaussian_im, -0.5, 0)
     gray = cv2.equalizeHist(gray)
     if prev_frame is None:
         prev_frame = gray
-        kp1,des1 = orb.detectAndCompute(prev_frame,None)
+        kp1 = detector.detect(gray, None)
+        _,des1 = brief.compute(gray, kp1)
+        continue
     print "Numbers of features: " + str(len(kp1))
-    kp2, des2 = orb.detectAndCompute(gray, None)
+    kp2 = detector.detect(gray,None)
+    _,des2 = brief.compute(gray,kp2)
     matches = bf.match(des1, des2)
     matches = sorted(matches, key=lambda x: x.distance)
-    img_match = cv2.drawMatches(prev_frame, kp1, gray, kp2, matches[:10],None, flags=2)
-    cv2.imshow("Match",img_match)
+    img_match = cv2.drawMatches(prev_frame, kp1, gray, kp2, matches[:10], None, flags=2)
+    cv2.imshow("Match", img_match)
     key = cv2.waitKey(100)
     if key & 0xFF == ord('q'):
         break

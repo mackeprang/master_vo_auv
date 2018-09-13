@@ -85,6 +85,8 @@ def find_features(im,method=0):
 def preprocess_image(im,size=(640,480),method=0):
     im = cv2.resize(im, size)
     gray = cv2.cvtColor(im, cv2.COLOR_BGR2GRAY)
+    gaussian_im = cv2.GaussianBlur(gray, (9, 9), 10.0)
+    gray = cv2.addWeighted(gray, 0.9, gaussian_im, -0.5, 0)
     if method==0:
         res = cv2.equalizeHist(gray)
     elif method == 1:
@@ -181,7 +183,8 @@ params.minConvexity = 0.87
 params.filterByInertia = True
 params.minInertiaRatio = 0.1
 prev_points = []
-feat_method = 2
+preproc_method = 0
+feat_method = 2 # 0: Blob, 1: FAST, 2: GoodFeatures to Track
 Rpos = np.eye(3,3,dtype=np.float32)
 tpos = np.zeros((3,1),dtype=np.float32)
 blob = cv2.SimpleBlobDetector_create(params)
@@ -190,10 +193,11 @@ for i,frame in enumerate(filenames):
     if image_broken(frame):
         continue
 
-    gray = preprocess_image(cv2.imread(frame),(640,480),0)
+    gray = preprocess_image(cv2.imread(frame),(640,480),preproc_method)
     im = cv2.resize(cv2.imread(frame),(640,480))
+
     if prev_frame is None:
-        prev_points,keypoints = find_features(gray,0)
+        prev_points,keypoints = find_features(gray,feat_method)
         prev_frame = gray.copy()
         continue
 
