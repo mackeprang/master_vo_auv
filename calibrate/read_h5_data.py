@@ -2,11 +2,12 @@ import h5py
 import matplotlib.pyplot as plt
 import utm
 import numpy as np
+
 filename = "/Users/Mackeprang/Dropbox (Personlig)/Master Thesis/Data/20180910 Optical flowtest/20181010_122400_Mission_5/output.h5"
 
 f = h5py.File(filename,'r')
 
-print list(f["Position"])
+#print list(f["Position"])
 alt = f["Position"]["Altitude"]
 depth = f["Position"]["Depth"]
 acc_x = f["Position"]["Acc_X"]
@@ -15,8 +16,6 @@ acc_z = f["Position"]["Acc_Z"]
 lat = f["Position"]["Lat"]
 lon = f["Position"]["Lon"]
 
-#dx = (lon2-lon)*40000*math.cos((lat1+lat2)*math.pi/360)/360
-#dy = (lat1-lat2)*40000/360
 xy = []
 for x,y in zip(lat,lon):
     xy.append(utm.from_latlon(x,y))
