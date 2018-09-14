@@ -22,8 +22,8 @@ for imfile in glob.glob(filepath):
 filenames.sort()
 
 hsv = np.zeros_like(cv2.imread(filenames[0]))
+print hsv
 hsv[...,1] = 255
-
 for i,frame in enumerate(filenames):
     if image_broken(frame):
         continue
