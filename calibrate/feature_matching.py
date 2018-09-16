@@ -2,41 +2,20 @@ import glob
 import cv2
 import numpy as np
 from PIL import Image
+import init_auv as auv
 
-def image_broken(img_path):
-    try:
-        im = Image.open(img_path)
-        im.verify()
-        im.close()
-        return 0
-    except:
-        return 1
-
-cam_mat = np.loadtxt("cam_mat.csv", dtype=np.float32, delimiter=',')
-dist_coeff = np.loadtxt("dist_coeff.csv", dtype=np.float32, delimiter=',')
-im_filename = '*.png'
 imdir = '/Users/Mackeprang/Dropbox (Personlig)/Master Thesis/Pictures/20181005_084733.9640_Mission_1'
-filenames = []
-images = []
-filepath = ''.join((imdir,'/',im_filename))
-
-for imfile in glob.glob(filepath):
-    filenames.append(imfile)
-
-filenames.sort()
+#imdir = auv.datasetPath_Mads()["Images"]
+filenames = auv.imagesFilePath(imdir,'*.png')
 
 prev_frame = None
-orb = cv2.xfeatures2d.SIFT_create()
+orb = cv2.ORB_create()
 bf = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
 for i,frame in enumerate(filenames):
-    if image_broken(frame):
+    if auv.image_broken(frame):
         continue
     img = cv2.imread(frame)
-    img = cv2.resize(img,(640,480))
-    gray = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
-    gaussian_im = cv2.GaussianBlur(gray, (9, 9), 10.0)
-    gray = cv2.addWeighted(gray, 0.9, gaussian_im, -0.5, 0)
-    gray = cv2.equalizeHist(gray)
+    gray = auv.preprocess_image(img,unsharp=False)
     if prev_frame is None:
         prev_frame = gray
         kp1,des1 = orb.detectAndCompute(prev_frame,None)

@@ -1,21 +1,22 @@
-import h5py
+import init_auv as auv
 import matplotlib.pyplot as plt
 import utm
 import numpy as np
-
 filename = "/Users/Mackeprang/Dropbox (Personlig)/Master Thesis/Data/20180910 Optical flowtest/20181010_122400_Mission_5/output.h5"
 
-f = h5py.File(filename,'r')
+
+f = auv.read_h5(filename)
+acc_data = auv.getAccData(filename)
 
 #print list(f["Position"])
+#print acc_data["Acc_X"].value
 alt = f["Position"]["Altitude"]
 depth = f["Position"]["Depth"]
-acc_x = f["Position"]["Acc_X"]
+acc_x = acc_data["Acc_x"]
 acc_y = f["Position"]["Acc_Y"]
 acc_z = f["Position"]["Acc_Z"]
 lat = f["Position"]["Lat"]
 lon = f["Position"]["Lon"]
-
 xy = []
 for x,y in zip(lat,lon):
     xy.append(utm.from_latlon(x,y))
