@@ -4,13 +4,20 @@ from PIL import Image
 import h5py
 import utm
 import glob
-
+from sys import platform
 # CONSTANTS
 IM_PRE_EQ_HIST = 0
 IM_PRE_CLASE = 1
 IM_PRE_RESOLUTION = (640,480)
-
+SYS_PLATFORM = platform
 ################ GETTING DATA ################
+
+def get_sys_platform(platform=SYS_PLATFORM):
+    if platform == "darwin":
+        return 0
+    elif platform == "win32":
+        return 1
+
 def image_broken(img_path):
     try:
         im = Image.open(img_path)
@@ -54,8 +61,13 @@ def getDistMat():
     return np.loadtxt("dist_coeff.csv", dtype=np.float32, delimiter=',')
 
 def imagesFilePath(imdir,ext='*.png'):
+    if get_sys_platform() == 0:
+        start_path = '/Users/Mackeprang/Dropbox (Personlig)/'
+    elif get_sys_platform() == 1:
+        start_path = 'C:/Users/Rasmus/Dropbox/'
+
     filenames = []
-    filepath = ''.join((imdir, '/', ext))
+    filepath = ''.join((start_path,imdir, '/', ext))
 
     for imfile in glob.glob(filepath):
         filenames.append(imfile)
@@ -63,9 +75,13 @@ def imagesFilePath(imdir,ext='*.png'):
     return filenames
 
 def datasetPath_Mads(num=0):
+    if get_sys_platform() == 0:
+        start_path = '/Users/Mackeprang/Dropbox (Personlig)/'
+    elif get_sys_platform() == 1:
+        start_path = 'C:/Users/Rasmus/Dropbox/'
     if num == 0:
-        images = '/Users/Mackeprang/Dropbox (Personlig)/Master Thesis/Pictures/20181005_084733.9640_Mission_1'
-        data = "/Users/Mackeprang/Dropbox (Personlig)/Master Thesis/Data/20180910 Optical flowtest/20181010_122400_Mission_5/output.h5"
+        images = ''.join((start_path,'Master Thesis/Pictures/20181005_084733.9640_Mission_1'))
+        data = ''.join((start_path,'Master Thesis/Data/20180910 Optical flowtest/20181010_122400_Mission_5/output.h5'))
     if num == 1:
         pass
     return {"Images": images,"Data": data}

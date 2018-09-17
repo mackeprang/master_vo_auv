@@ -4,7 +4,7 @@ import numpy as np
 from PIL import Image
 import init_auv as auv
 import feature_params as feat_params
-imdir = '/Users/Mackeprang/Dropbox (Personlig)/Master Thesis/Pictures/20181005_084733.9640_Mission_1'
+imdir = 'Master Thesis/Pictures/20181005_084733.9640_Mission_1'
 filenames = auv.imagesFilePath(imdir)
 
 def nothing(x):

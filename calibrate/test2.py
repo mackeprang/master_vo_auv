@@ -27,9 +27,7 @@ def find_features(im,method=0):
 
 cam_mat = auv.getCamMat()
 dist_coeff = auv.getCamMat()
-imdir = '/Users/Mackeprang/Dropbox (Personlig)/Master Thesis/Pictures/20181005_084733.9640_Mission_1'
-#imdir = '/Users/Mackeprang/Dropbox (Personlig)/Master Thesis/Pictures/20181005_084733.9640_Mission_1'
-#imdir = 'C:/Users/Rasmus/Dropbox/Master Thesis/Pictures/20181005_084733.9640_Mission_1'
+imdir = 'Master Thesis/Pictures/20181005_084733.9640_Mission_1'
 filenames = auv.imagesFilePath(imdir)
 images = []
 path = []
