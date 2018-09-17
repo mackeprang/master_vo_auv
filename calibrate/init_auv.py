@@ -114,11 +114,11 @@ def draw_flow(img,p1,p2,mask=None):
             for i, (new, old) in enumerate(zip(p1_outliers, p2_outliers)):
                 a, b = new.ravel()
                 c, d = old.ravel()
-                img = cv2.line(img, (a, b), (c, d), (0, 0, 255), 1.5)
+                img = cv2.line(img, (a, b), (c, d), (0, 0, 255), 1)
     return img
 
 def sparse_optical_flow(img1,img2,points,fb_threshold,optical_flow_params):
-    #old_points = points.copy()
+    old_points = points.copy()
     new_points, status , err = cv2.calcOpticalFlowPyrLK(img1,img2,points,None,**optical_flow_params)
     if fb_threshold>0:
         new_points_r, status_r, err = cv2.calcOpticalFlowPyrLK(img2,img1,new_points,None,**optical_flow_params)
@@ -130,7 +130,7 @@ def sparse_optical_flow(img1,img2,points,fb_threshold,optical_flow_params):
     return new_points,old_points
 
 def update_motion(points1,points2,Rpos,tpos,cam_mat=None,scale = 1.0):
-    E, mask = cv2.findEssentialMat(points1,points2,cameraMatrix=cam_mat,method=cv2.LMEDS,prob=0.999, mask=None)
+    E, mask = cv2.findEssentialMat(points1,points2,cameraMatrix=cam_mat,method=cv2.RANSAC,prob=0.999, mask=None)
     newmask = np.copy(mask)
     _,R,t,newmask = cv2.recoverPose(E,points1,points2,cameraMatrix=cam_mat,mask=newmask)
     tp = tpos+np.dot(Rpos,t)*scale

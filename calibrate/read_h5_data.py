@@ -12,7 +12,7 @@ acc_data = auv.getAccData(filename)
 #print acc_data["Acc_X"].value
 alt = f["Position"]["Altitude"]
 depth = f["Position"]["Depth"]
-acc_x = acc_data["Acc_x"]
+acc_x = acc_data["Acc_X"]
 acc_y = f["Position"]["Acc_Y"]
 acc_z = f["Position"]["Acc_Z"]
 lat = f["Position"]["Lat"]

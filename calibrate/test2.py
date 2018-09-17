@@ -28,21 +28,23 @@ def find_features(im,method=0):
 cam_mat = auv.getCamMat()
 dist_coeff = auv.getCamMat()
 imdir = 'Master Thesis/Pictures/20181005_084733.9640_Mission_1'
+#imdir = 'Master Thesis/Pictures/20181010_111618.6170_Mission_4'
 filenames = auv.imagesFilePath(imdir)
+#filenames = filenames[1000:]
 images = []
 path = []
 timestamp = []
 backward_flow_threshold = 1
 prev_frame = None
 canvas = np.zeros((480,300,3), dtype=np.uint8)
-
+mask = None
 
 # Set up the detector with default parameters.
 
 
 prev_points = []
-preproc_method = 0
-feat_method = 0 # 0: Blob, 1: FAST, 2: GoodFeatures to Track
+preproc_method = 1
+feat_method = 2 # 0: Blob, 1: FAST, 2: GoodFeatures to Track
 Rpos = np.eye(3,3,dtype=np.float32)
 tpos = np.zeros((3,1),dtype=np.float32)
 blob = cv2.SimpleBlobDetector_create(feat_params.get_blob_params())
@@ -64,10 +66,11 @@ for i,frame in enumerate(filenames):
     print "Number of features: " + str(len(prev_points))
     new_points, prev_points = auv.sparse_optical_flow(prev_frame, gray, prev_points, backward_flow_threshold,
                                                   feat_params.get_optical_flow_params())
+
     path.append(tpos)
     old_tpos = np.copy(tpos)
     Rpos, tpos, mask = auv.update_motion(prev_points, new_points, Rpos, old_tpos, cam_mat)
-    flow_im = auv.draw_flow(im,prev_points,new_points,mask=None)
+    flow_im = auv.draw_flow(im, prev_points, new_points, mask=mask)
     canvas = auv.draw_path(canvas,path,scale=2)
     gray_with_kp = cv2.drawKeypoints(gray,keypoints,np.array([]), (0, 0, 255),
                                      cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
@@ -77,15 +80,16 @@ for i,frame in enumerate(filenames):
     # cv2.imshow('Canvas', canvas)
     prev_frame = gray.copy()
     prev_points = new_points.copy()
-    if cv2.waitKey(200) & 0xFF  == ord('q'): #Pause
+    key = cv2.waitKey(100)
+    if key & 0xFF  == ord('q'): #Pause
         key = cv2.waitKey()
-        if cv2.waitKey() & 0xFF  == ord('q'): #Exiting
+        if key & 0xFF  == ord('q'): #Exiting
             break
-        elif cv2.waitKey() & 0xFF  == ord('1'):
+        elif key & 0xFF  == ord('1'):
             feat_method = 1
-        elif cv2.waitKey() & 0xFF  == ord('2'): #Using
+        elif key & 0xFF  == ord('2'): #Using
             feat_method = 0
-        elif cv2.waitKey() & 0xFF  == ord('3'): #Using
+        elif key & 0xFF  == ord('3'): #Using
             feat_method = 2
 print('Ending program')
 cv2.destroyAllWindows()
