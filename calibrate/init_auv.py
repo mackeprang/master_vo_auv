@@ -5,6 +5,8 @@ import h5py
 import utm
 import glob
 from sys import platform
+from auv_dataset import *
+import math
 # CONSTANTS
 IM_PRE_EQ_HIST = 0
 IM_PRE_CLASE = 1
@@ -54,37 +56,39 @@ def getRelPos(hdf):
 
     return {"X":rel_pos_x,"Y":rel_pos_y}
 
+def get_gps_goal(gps_pos_x,gps_pos_y,threshold=50):
+    idx = 0
+    for i, (x, y) in enumerate(zip(gps_pos_x, gps_pos_y)):
+        dist = math.sqrt(x * x + y * y)
+        if dist > threshold:
+            return x,y,i
+
 def getCamMat():
     return np.loadtxt("cam_mat.csv", dtype=np.float32, delimiter=',')
 
 def getDistMat():
     return np.loadtxt("dist_coeff.csv", dtype=np.float32, delimiter=',')
 
-def imagesFilePath(imdir,ext='*.png'):
-    if get_sys_platform() == 0:
-        start_path = '/Users/Mackeprang/Dropbox (Personlig)/'
-    elif get_sys_platform() == 1:
-        start_path = 'C:/Users/Rasmus/Dropbox/'
-
+def find_images(imdir,ext='*.png'):
     filenames = []
-    filepath = ''.join((start_path,imdir, '/', ext))
+    filepath = ''.join((imdir, '/', ext))
 
     for imfile in glob.glob(filepath):
         filenames.append(imfile)
     filenames.sort()
     return filenames
 
-def datasetPath_Mads(num=0):
+def get_mission_by_num(mission_num=1):
     if get_sys_platform() == 0:
         start_path = '/Users/Mackeprang/Dropbox (Personlig)/'
     elif get_sys_platform() == 1:
         start_path = 'C:/Users/Rasmus/Dropbox/'
-    if num == 0:
-        images = ''.join((start_path,'Master Thesis/Pictures/20181005_084733.9640_Mission_1'))
-        data = ''.join((start_path,'Master Thesis/Data/20180910 Optical flowtest/20181010_122400_Mission_5/output.h5'))
-    if num == 1:
-        pass
-    return {"Images": images,"Data": data}
+
+    imdir,datadir = get_im_and_data_dir(mission_num)
+    imdir = ''.join((start_path,imdir))
+    datadir = ''.join((start_path,datadir))
+    name = ''.join(("Mission ", str(mission_num)))
+    return {"Images": imdir,"Data": datadir, "Name": name}
 
 ################# OpenCV Functions ##################
 def draw_flow(img,p1,p2,mask=None):
@@ -152,18 +156,41 @@ def preprocess_image(im_color,size=IM_PRE_RESOLUTION,method=IM_PRE_EQ_HIST, unsh
         res = clahe.apply(gray)
     return res
 
-def draw_path(canvas,points,scale=0.1,clear=True,color=(0,255,0)):
+def get_current_heading(Rpos):
+    th = math.atan2(Rpos[1][0], Rpos[0][0])
+    th_deg = th*180/3.1415927
+    if th_deg >=360:
+        th_deg-=360
+    elif th_deg<0:
+        th_deg +=360
+
+    return th_deg
+def draw_path(canvas,points,scale=0.1,clear=True,color=(0,255,0),rotate=1,flipX=False,flipY=False):
     points = np.reshape(points,(-1,3))
     dim = np.shape(canvas)
     canvas_h = dim[0]
     canvas_w = dim[1]
-    canvas = np.zeros(dim,dtype=np.uint8)
+    if clear is True:
+        canvas = np.zeros(dim,dtype=np.uint8)
+    for n in range(rotate):
+        for i, p in enumerate(points):
+            points[i]= [-p[1],p[0],p[2]]
+
+    if flipX is True:
+        for i, p in enumerate(points):
+            points[i]= [-p[0],p[1],p[2]]
+
+    if flipY is True:
+        for i, p in enumerate(points):
+            points[i]= [p[0],-p[1],p[2]]
 
     pos_orig = points[0]
     x_orig = pos_orig[0]
     y_orig = pos_orig[1]
 
     for i, p2 in enumerate(points):
+        if i == 0:
+            continue
         p1 = points[i-1]
         x1 = int((p1[0]-x_orig)*scale+canvas_w/2)
         y1 = int((p1[1] - y_orig) * scale + canvas_h / 2)
