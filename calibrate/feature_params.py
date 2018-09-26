@@ -6,13 +6,13 @@ def get_FAST_params():
 
 def get_optical_flow_params():
 
-    return dict(winSize = (15,15),
-                           maxLevel = 3,
+    return dict(winSize = (30,30),
+                           maxLevel = 4,
                            criteria = (cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 10, 0.01))
 def get_good_feature_params():
     return dict(maxCorners=20000,
                                qualityLevel=0.01,
-                               minDistance=5,
+                               minDistance=10,
                                blockSize=5,
                                useHarrisDetector=False)
 

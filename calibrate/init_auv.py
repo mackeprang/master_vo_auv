@@ -56,12 +56,22 @@ def getRelPos(hdf):
 
     return {"X":rel_pos_x,"Y":rel_pos_y}
 
+def draw_gps_marks(canvas,gps_x,gps_y,size=(480,400),radius=1):
+    for (i,k) in zip(gps_x,gps_y):
+        x = int(i + size[1]//2)
+        y = int(k + size[0]//2)
+        canvas = cv2.circle(canvas,(x,y),radius,(255,255,255))
+    return canvas
 def get_gps_goal(gps_pos_x,gps_pos_y,threshold=50):
     idx = 0
     for i, (x, y) in enumerate(zip(gps_pos_x, gps_pos_y)):
         dist = math.sqrt(x * x + y * y)
         if dist > threshold:
             return x,y,i
+
+def get_altitude(mission):
+    f = read_h5(mission["Data"])
+    return f["Position"]["Altitude"]
 
 def getCamMat():
     return np.loadtxt("cam_mat.csv", dtype=np.float32, delimiter=',')
@@ -111,15 +121,23 @@ def draw_flow(img,p1,p2,mask=None):
             for i, (new, old) in enumerate(zip(p1_inliers, p2_inliers)):
                 a, b = new.ravel()
                 c, d = old.ravel()
-                img = cv2.line(img, (a, b), (c, d), (0, 255, 0), 1)
+                img = cv2.arrowedLine(img, (a, b), (c, d), (0, 255, 0), 1,tipLength=0.2)
         if len(p1_outliers) > 0:
             p1_outliers = np.reshape(p1_outliers, (-1, 2))
             p2_outliers = np.reshape(p2_outliers, (-1, 2))
             for i, (new, old) in enumerate(zip(p1_outliers, p2_outliers)):
                 a, b = new.ravel()
                 c, d = old.ravel()
-                img = cv2.line(img, (a, b), (c, d), (0, 0, 255), 1)
+                img = cv2.arrowedLine(img, (a, b), (c, d), (0, 0, 255), 1,tipLength=0.2)
     return img
+
+# Checks if a matrix is a valid rotation matrix.
+def isRotationMatrix(R) :
+    Rt = np.transpose(R)
+    shouldBeIdentity = np.dot(Rt, R)
+    I = np.identity(3, dtype = R.dtype)
+    n = np.linalg.norm(I - shouldBeIdentity)
+    return n < 1e-6
 
 def sparse_optical_flow(img1,img2,points,fb_threshold,optical_flow_params):
     old_points = points.copy()
@@ -135,10 +153,17 @@ def sparse_optical_flow(img1,img2,points,fb_threshold,optical_flow_params):
 
 def update_motion(points1,points2,Rpos,tpos,cam_mat=None,scale = 1.0):
     E, mask = cv2.findEssentialMat(points1,points2,cameraMatrix=cam_mat,method=cv2.RANSAC,prob=0.999, mask=None)
-    newmask = np.copy(mask)
-    _,R,t,newmask = cv2.recoverPose(E,points1,points2,cameraMatrix=cam_mat,mask=newmask)
-    tp = tpos+np.dot(Rpos,t)*scale
-    Rp = np.dot(R,Rpos)
+    if np.shape(E) == (3,3):
+        newmask = np.copy(mask)
+        Retval,R,t,newmask = cv2.recoverPose(E,points1,points2,cameraMatrix=cam_mat,mask=newmask)
+    else:
+        Retval = 0
+    if Retval < 10:
+        Rp = Rpos.copy()
+        tp = tpos.copy()
+    else:
+        Rp = np.dot(R,Rpos)
+        tp = tpos+np.dot(Rp,t)*scale
     return Rp,tp,mask
 
 def preprocess_image(im_color,size=IM_PRE_RESOLUTION,method=IM_PRE_EQ_HIST, unsharp=True):
@@ -165,7 +190,9 @@ def get_current_heading(Rpos):
         th_deg +=360
 
     return th_deg
-def draw_path(canvas,points,scale=0.1,clear=True,color=(0,255,0),rotate=1,flipX=False,flipY=False):
+def draw_path(canvas,points,scale=0.1,clear=True,color=(0,255,0),rotate=1,flipX=False,flipY=False,with_gps_marks=True,gps_x=None,gps_y=None):
+
+
     points = np.reshape(points,(-1,3))
     dim = np.shape(canvas)
     canvas_h = dim[0]
@@ -188,6 +215,9 @@ def draw_path(canvas,points,scale=0.1,clear=True,color=(0,255,0),rotate=1,flipX=
     x_orig = pos_orig[0]
     y_orig = pos_orig[1]
 
+    if with_gps_marks:
+       canvas = draw_gps_marks(canvas,gps_x,gps_y,radius=2)
+
     for i, p2 in enumerate(points):
         if i == 0:
             continue
@@ -196,5 +226,5 @@ def draw_path(canvas,points,scale=0.1,clear=True,color=(0,255,0),rotate=1,flipX=
         y1 = int((p1[1] - y_orig) * scale + canvas_h / 2)
         x2 = int((p2[0] - x_orig) * scale + canvas_w / 2)
         y2 = int((p2[1] - y_orig) * scale + canvas_h / 2)
-        cv2.line(canvas,(x1,y1),(x2,y2),color,1)
+        cv2.line(canvas,(x1,y1),(x2,y2),color,2)
     return canvas

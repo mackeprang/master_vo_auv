@@ -5,20 +5,25 @@ import numpy as np
 import math
 
 mission = auv.get_mission_by_num(12)
-gps_pos_y = auv.getRelPos(mission["Data"])["Y"]
-gps_pos_x = auv.getRelPos(mission["Data"])["X"]
-idx = 0
-print gps_pos_y
-for i,(x,y) in enumerate(zip(gps_pos_x,gps_pos_y)):
-    dist = math.sqrt(x*x+y*y)
-    if dist >50:
-        idx = i
-        break
-print gps_pos_x[idx]
-print gps_pos_y[idx]
-fig = plt.figure()
-plt.scatter(gps_pos_x,gps_pos_y)
-plt.show()
+
+f = auv.read_h5(mission["Data"])
+t =f["Position"]["time"]
+t = t-t[0]
+print list(t)
+# gps_pos_y = auv.getRelPos(mission["Data"])["Y"]
+# gps_pos_x = auv.getRelPos(mission["Data"])["X"]
+# idx = 0
+# print gps_pos_y
+# for i,(x,y) in enumerate(zip(gps_pos_x,gps_pos_y)):
+#     dist = math.sqrt(x*x+y*y)
+#     if dist >50:
+#         idx = i
+#         break
+# print gps_pos_x[idx]
+# print gps_pos_y[idx]
+# fig = plt.figure()
+# plt.scatter(gps_pos_x,gps_pos_y)
+# plt.show()
 
 # filename = "/Users/Mackeprang/Dropbox (Personlig)/Master Thesis/Data/20180910 Optical flowtest/20181010_112029_Mission_5/output.h5"
 #
